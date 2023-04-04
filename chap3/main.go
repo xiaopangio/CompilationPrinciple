@@ -16,6 +16,7 @@ func main() {
 	}
 	lexer.Run()
 
+	//lexer.Print()
 	lexer.Print()
 	analyzer := analyzer.NewAnalyzer(lexer.Target())
 	analyzer.Analyse()

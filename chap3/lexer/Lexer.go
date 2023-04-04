@@ -21,13 +21,13 @@ const (
 )
 
 var classMap map[int]string
-var SymbolTable map[string]Symbol
+var SymbolTable map[string]*Symbol
 
 type Symbol struct {
-	Name  string //变量的名字
+	Name  []byte //变量的名字
 	Kind  int    //标识符类型，值为varKind，表明是一个变量标识符。
-	Type  int    // 种别
-	Value string //表示这个变量是否定义了初值，有的话值为初值内部表示的指针，(↑10)，否则为NULL。
+	Class int    // 种别
+	Value string //值
 }
 
 const (
@@ -56,7 +56,7 @@ type Lexer struct {
 }
 type Token struct {
 	Class int
-	Value []byte
+	Value string
 }
 
 func InitLexer() error {
@@ -90,7 +90,7 @@ func InitLexer() error {
 	classMap[Keyword] = "Keyword"
 	classMap[Operator] = "Operator"
 	classMap[Separator] = "Separator"
-	SymbolTable = make(map[string]Symbol)
+	SymbolTable = make(map[string]*Symbol)
 	return nil
 }
 func NewLexer() *Lexer {
@@ -229,9 +229,7 @@ var (
 func (l *Lexer) parse() error {
 	var tokenList []*Token
 	var state int
-	var token *Token
-	//fmt.Printf("%v\n", l.source)
-
+	var symbol *Symbol
 	for i := 0; i < len(l.source) || (i == len(l.source) && state != InitState); {
 		b := byte(' ')
 		if i != len(l.source) {
@@ -239,25 +237,27 @@ func (l *Lexer) parse() error {
 		}
 		switch state {
 		case InitState:
-			token = &Token{
-				Value: []byte{},
+			symbol = &Symbol{
+				Name: []byte{},
 			}
 			if isLetter(b) {
 				state = IDState
-				token.Value = append(token.Value, b)
-				token.Class = Identifier
+
+				symbol.Name = append(symbol.Name, b)
+				symbol.Class = Identifier
 			} else if isDigit(b) {
 				state = NumberState
-				token.Value = append(token.Value, b)
-				token.Class = IntConst
+				symbol.Name = append(symbol.Name, b)
+				symbol.Class = IntConst
 			} else if isSeparator(b) {
 				state = SeparatorState
-				token.Value = append(token.Value, b)
-				token.Class = Separator
+				symbol.Name = append(symbol.Name, b)
+				symbol.Class = Separator
+
 			} else if isOperator(b) {
 				state = OperatorState
-				token.Value = append(token.Value, b)
-				token.Class = Operator
+				symbol.Name = append(symbol.Name, b)
+				symbol.Class = Operator
 			} else if isSpace(b) || isNewline(b) {
 				state = InitState
 			} else {
@@ -266,51 +266,95 @@ func (l *Lexer) parse() error {
 			i++
 		case IDState:
 			if isLetter(b) || isDigit(b) || isUnderline(b) {
-				token.Value = append(token.Value, b)
+				symbol.Name = append(symbol.Name, b)
 				i++
 			} else {
-				if isKeyword(token.Value) {
-					token.Class = Keyword
+				if isKeyword(symbol.Name) {
+					symbol.Class = Keyword
 				}
-				if isBoolConst(token.Value) {
-					token.Class = BoolConst
+				if isBoolConst(symbol.Name) {
+					symbol.Class = BoolConst
 				}
-				if len(token.Value) > 8 {
+				if len(symbol.Name) > 8 {
 					l.target = tokenList
-					return fmt.Errorf("%w : %s", IdentifierTooLongErr, string(token.Value))
+					return fmt.Errorf("%w : %s", IdentifierTooLongErr, string(symbol.Name))
 				}
-				tokenList = append(tokenList, token)
+				if v, ok := SymbolTable[string(symbol.Name)]; !ok {
+					SymbolTable[string(symbol.Name)] = symbol
+					tokenList = append(tokenList, &Token{
+						Class: symbol.Class,
+						Value: string(symbol.Name),
+					})
+				} else {
+					tokenList = append(tokenList, &Token{
+						Class: v.Class,
+						Value: string(v.Name),
+					})
+				}
 				state = InitState
 			}
 		case NumberState:
 			if isDigit(b) {
-				token.Value = append(token.Value, b)
+				symbol.Name = append(symbol.Name, b)
 				i++
 			} else {
-				if len(token.Value) > 1 && token.Value[0] == 48 {
+				if len(symbol.Name) > 1 && symbol.Name[0] == 48 {
 					l.target = tokenList
-					return fmt.Errorf("%w : %s", NumberStartWithZeroErr, string(token.Value))
+					return fmt.Errorf("%w : %s", NumberStartWithZeroErr, string(symbol.Name))
 				}
-				if len(token.Value) > 8 {
+				if len(symbol.Name) > 8 {
 					l.target = tokenList
-					return fmt.Errorf("%w : %s", NumberTooLongErr, string(token.Value))
+					return fmt.Errorf("%w : %s", NumberTooLongErr, string(symbol.Name))
 				}
-				tokenList = append(tokenList, token)
+				if v, ok := SymbolTable[string(symbol.Name)]; !ok {
+					SymbolTable[string(symbol.Name)] = symbol
+					tokenList = append(tokenList, &Token{
+						Class: symbol.Class,
+						Value: string(symbol.Name),
+					})
+				} else {
+					tokenList = append(tokenList, &Token{
+						Class: v.Class,
+						Value: string(v.Name),
+					})
+				}
 				state = InitState
 			}
 		case SeparatorState:
-			tokenList = append(tokenList, token)
+			if v, ok := SymbolTable[string(symbol.Name)]; !ok {
+				SymbolTable[string(symbol.Name)] = symbol
+				tokenList = append(tokenList, &Token{
+					Class: symbol.Class,
+					Value: string(symbol.Name),
+				})
+			} else {
+				tokenList = append(tokenList, &Token{
+					Class: v.Class,
+					Value: string(v.Name),
+				})
+			}
 			state = InitState
 		case OperatorState:
 			if isOperator(b) {
-				token.Value = append(token.Value, b)
+				symbol.Name = append(symbol.Name, b)
 				i++
 			} else {
-				if !isValidOperator(token.Value) {
+				if !isValidOperator(symbol.Name) {
 					l.target = tokenList
-					return fmt.Errorf("%w : %s", InvalidOperatorErr, string(token.Value))
+					return fmt.Errorf("%w : %s", InvalidOperatorErr, string(symbol.Name))
 				}
-				tokenList = append(tokenList, token)
+				if v, ok := SymbolTable[string(symbol.Name)]; !ok {
+					SymbolTable[string(symbol.Name)] = symbol
+					tokenList = append(tokenList, &Token{
+						Class: symbol.Class,
+						Value: string(symbol.Name),
+					})
+				} else {
+					tokenList = append(tokenList, &Token{
+						Class: v.Class,
+						Value: string(v.Name),
+					})
+				}
 				state = InitState
 			}
 		case ErrState:
@@ -419,7 +463,7 @@ func (l *Lexer) Run() {
 }
 func (l *Lexer) Print() {
 	for _, token := range l.target {
-		fmt.Printf("class: %s, value: %s\n", classMap[token.Class], token.Value)
+		fmt.Printf("class: %10s , value: %s\n", classMap[token.Class], token.Value)
 	}
 }
 func (l *Lexer) Target() []*Token {
