@@ -1,0 +1,34 @@
+{
+    int a;
+    int b;
+    int c;
+    bool d;
+    bool e;
+    c = 0;
+    a = 20;
+    b = 10;
+    c=a+b;
+    d:=a>b;
+    while d do
+    {
+        write a;
+        a=a-1;
+        d:=a>b;
+    }
+    read a;
+    if d then
+    {
+        write a;
+    }
+    else
+    {
+        write b;
+    }
+    write c;
+    e:=a>b;
+    e:=e && d;
+    if e then
+    {
+        write a;
+    }
+}

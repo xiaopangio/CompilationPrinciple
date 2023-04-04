@@ -1,0 +1,4 @@
+(keyword,'int'),(identifier,'main'),(separator,'('),(separator,')'),(separator,'{'),
+(keyword,'int'),(identifier,'number1'),(operator,'='),(intConst,'12354'),(separator,';'),
+(keyword,'int'),(identifier,'number2'),(operator,'=')
+error: number start with zero : 012

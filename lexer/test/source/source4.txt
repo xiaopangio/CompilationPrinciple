@@ -1,0 +1,22 @@
+int main(){
+    int number1=12354;
+    int number2=12;  
+    bool x=3>10;
+    a:=number1>number2;
+    b:=number1>number2+10;
+    c:=a&&b;
+    int abcdefghijklmn=2;  //命名超过8位
+    write(c);
+    int x;
+    read(x);
+    if a then{
+        write(number1);
+    }else{
+        write(number2);
+    }
+    int i=1;
+    while i<1000 {
+        write(i);
+        i=i+1;
+    }
+}

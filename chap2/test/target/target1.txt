@@ -1,0 +1,2 @@
+(keyword,'int'),(identifier,'main'),(separator,'('),(separator,')'),(separator,'{'),
+(keyword,'return'),(intConst,'0'),(separator,';')

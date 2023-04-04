@@ -1,0 +1,10 @@
+(keyword,'int'),(identifier,'main'),(separator,'('),(separator,')'),(separator,'{'),
+(keyword,'int'),(identifier,'number1'),(operator,'='),(intConst,'12354'),(separator,';'),
+(keyword,'int'),(identifier,'number2'),(operator,'='),(intConst,'12'),(separator,';'),
+(keyword,'bool'),(identifier,'x'),(operator,'='),(intConst,'3'),(operator,'>'),
+(intConst,'10'),(separator,';'),(identifier,'a'),(operator,':='),(identifier,'number1'),
+(operator,'>'),(identifier,'number2'),(separator,';'),(identifier,'b'),(operator,':='),
+(identifier,'number1'),(operator,'>'),(identifier,'number2'),(operator,'+'),(intConst,'10'),
+(separator,';'),(identifier,'c'),(operator,':='),(identifier,'a'),(operator,'&&'),
+(identifier,'b'),(separator,';'),(keyword,'int')
+error: identifier's length greater than 8 : abcdefghijklmn
