@@ -1,4 +1,4 @@
-// Package test  @Author xiaobaiio 2023/3/26 22:01:00
+// Package text  @Author xiaobaiio 2023/3/26 22:01:00
 package main
 
 import "fmt"

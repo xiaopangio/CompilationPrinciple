@@ -25,7 +25,6 @@ const (
 	newLine    = byte(10)
 	slash      = byte(47)
 	star       = byte(42)
-	slashT     = byte(9)
 	singleLine = 1
 	multiLine  = 2
 )
@@ -69,10 +68,12 @@ var boolOperatorList = []string{
 }
 
 type Symbol struct {
-	Name  []byte //变量的名字
-	Kind  int    //标识符类型，值为varKind，表明是一个变量标识符。
-	Class int    // 种别
-	Value string //值
+	Name     []byte //变量的名字
+	Kind     int    //标识符类型，值为varKind，表明是一个变量标识符。
+	Class    int    // 种别
+	Value    string //值
+	Type     string //数据类型 int or bool
+	IsValued bool   //是否有值
 }
 
 type Lexer struct {
@@ -171,17 +172,7 @@ func (l *Lexer) clean() error {
 	for _, b := range l.source {
 		switch b {
 		case enter:
-			if pre == slash {
-				cleanTarget = append(cleanTarget, slash)
-				pre = 0
-			}
 			pre = enter
-		case slashT:
-			if pre == slash {
-				cleanTarget = append(cleanTarget, slash)
-				pre = 0
-			}
-			continue
 		case newLine:
 			if cleanAnnotation {
 				if cleanAnnotationType == multiLine {
@@ -193,23 +184,14 @@ func (l *Lexer) clean() error {
 					return errors.New("cleanAnnotationType is invalid: " + strconv.Itoa(cleanAnnotationType))
 				}
 			}
-			if pre == slash {
-				cleanTarget = append(cleanTarget, slash)
-				pre = 0
-			}
 			//if pre == enter {
 			cleanSpace = true
-			cleanTarget = append(cleanTarget, space)
 			//} else {
 			//	return errors.New("after enter is not a newline")
 			//}
 		case space:
 			if cleanAnnotation {
 				continue
-			}
-			if pre == slash {
-				cleanTarget = append(cleanTarget, slash)
-				pre = 0
 			}
 			if !cleanSpace {
 				cleanTarget = append(cleanTarget, space)
@@ -241,10 +223,6 @@ func (l *Lexer) clean() error {
 			if cleanAnnotation {
 				continue
 			}
-			if pre == slash {
-				cleanTarget = append(cleanTarget, slash)
-				pre = 0
-			}
 			cleanTarget = append(cleanTarget, b)
 			if cleanSpace {
 				cleanSpace = false
@@ -260,7 +238,6 @@ func (l *Lexer) clean() error {
 // Run 进行词法分析
 func (l *Lexer) Run() {
 	err := l.clean()
-	fmt.Printf("%s\n", l.source)
 	if err != nil {
 		l.err = err
 		log.Println(err)
@@ -301,7 +278,6 @@ func (l *Lexer) parse() error {
 			}
 			if isLetter(b) {
 				state = IDState
-
 				symbol.Name = append(symbol.Name, b)
 				symbol.Class = Identifier
 			} else if isDigit(b) {

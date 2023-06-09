@@ -2,7 +2,7 @@
 package analyzer
 
 import (
-	"chap3/lexer"
+	"chap4/lexer"
 	"fmt"
 	"os"
 	"strings"
@@ -68,7 +68,9 @@ func NewAnalyzer(source []*lexer.Token) *Analyzer {
 		source: source,
 	}
 }
-
+func (a *Analyzer) GetRoot() *Node {
+	return a.root
+}
 func InitAnalyzer() {
 	ConstMap[EXPR] = "<EXPR>"
 	ConstMap[EXPR1] = "<EXPR1>"
@@ -93,10 +95,10 @@ func InitAnalyzer() {
 	ConstMap[NEGA] = "<NEGA>"
 }
 func classError(class, index int) error {
-	return fmt.Errorf("unexpected token class: %v,token index: %d", class, index)
+	return fmt.Errorf("unexpected Token Class: %v,Token index: %d", class, index)
 }
 func valueError(value string, index int) error {
-	return fmt.Errorf("unexpected token value: %s,token index: %d", value, index)
+	return fmt.Errorf("unexpected Token value: %s,Token index: %d", value, index)
 }
 func (a *Analyzer) Analyse() {
 	node, err := a.PROG()
@@ -125,7 +127,7 @@ func (a *Analyzer) GetToken() bool {
 // E E->T E1
 func (a *Analyzer) E() (*Node, error) {
 	node := &Node{
-		class: EXPR,
+		Class: EXPR,
 	}
 	t, err := a.T()
 	if err != nil {
@@ -135,19 +137,19 @@ func (a *Analyzer) E() (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild = t
-	t.rightBro = e1
+	node.LeftChild = t
+	t.RightBro = e1
 	return node, nil
 }
 
 // E1 E1->ADDOP T E1 、E1-> 空
 func (a *Analyzer) E1() (*Node, error) {
 	node := &Node{
-		class: EXPR1,
+		Class: EXPR1,
 	}
 	addOp, err := a.AddOp()
 	if err != nil {
-		node.leftChild = &Node{class: Empty}
+		node.LeftChild = &Node{Class: Empty}
 		return node, nil
 	}
 	t, err := a.T()
@@ -158,16 +160,16 @@ func (a *Analyzer) E1() (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild = addOp
-	addOp.rightBro = t
-	t.rightBro = e1
+	node.LeftChild = addOp
+	addOp.RightBro = t
+	t.RightBro = e1
 	return node, nil
 }
 
 // T -> NEGA T1
 func (a *Analyzer) T() (*Node, error) {
 	node := &Node{
-		class: TERM,
+		Class: TERM,
 	}
 	nega, err := a.NEGA()
 	if err != nil {
@@ -177,14 +179,14 @@ func (a *Analyzer) T() (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild = nega
-	nega.rightBro = t1
+	node.LeftChild = nega
+	nega.RightBro = t1
 	return node, nil
 }
 
 // NEGA -> - F | F
 func (a *Analyzer) NEGA() (*Node, error) {
-	node := &Node{class: NEGA}
+	node := &Node{Class: NEGA}
 	tempIndex := a.index
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
@@ -192,13 +194,13 @@ func (a *Analyzer) NEGA() (*Node, error) {
 	switch a.token.Class {
 	case lexer.Operator:
 		if a.token.Value == "-" {
-			minus := &Node{class: Operator, token: a.token, isTerminal: true}
+			minus := &Node{Class: Operator, Token: a.token, IsTerminal: true}
 			f, err := a.F()
 			if err != nil {
 				return nil, err
 			}
-			node.leftChild = minus
-			minus.rightBro = f
+			node.LeftChild = minus
+			minus.RightBro = f
 			return node, nil
 		} else {
 			a.index = tempIndex
@@ -210,18 +212,18 @@ func (a *Analyzer) NEGA() (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild = f
+	node.LeftChild = f
 	return node, nil
 }
 
 // T1 ->MULOP NEGA T1 | empty
 func (a *Analyzer) T1() (*Node, error) {
 	node := &Node{
-		class: TERM1,
+		Class: TERM1,
 	}
 	mulOp, err := a.MulOp()
 	if err != nil {
-		node.leftChild = &Node{class: Empty}
+		node.LeftChild = &Node{Class: Empty}
 		return node, nil
 	}
 	nega, err := a.NEGA()
@@ -232,9 +234,9 @@ func (a *Analyzer) T1() (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild = mulOp
-	mulOp.rightBro = nega
-	nega.rightBro = t1
+	node.LeftChild = mulOp
+	mulOp.RightBro = nega
+	nega.RightBro = t1
 	return node, nil
 }
 
@@ -243,29 +245,29 @@ func (a *Analyzer) T1() (*Node, error) {
 func (a *Analyzer) F() (*Node, error) {
 	lastIndex := a.index
 	node := &Node{
-		class: FACTOR,
+		Class: FACTOR,
 	}
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
 	}
 	switch a.token.Class {
 	case lexer.Identifier:
-		node.leftChild = &Node{
-			class:      Id,
-			token:      a.token,
-			isTerminal: true,
+		node.LeftChild = &Node{
+			Class:      Id,
+			Token:      a.token,
+			IsTerminal: true,
 		}
 		return node, nil
 	case lexer.IntConst:
-		node.leftChild = &Node{
-			class:      Number,
-			token:      a.token,
-			isTerminal: true,
+		node.LeftChild = &Node{
+			Class:      Number,
+			Token:      a.token,
+			IsTerminal: true,
 		}
 		return node, nil
 	case lexer.Separator:
 		if a.token.Value == "(" {
-			leftBracket := &Node{class: LeftBracket, token: a.token, isTerminal: true}
+			leftBracket := &Node{Class: LeftBracket, Token: a.token, IsTerminal: true}
 			e, err := a.E()
 			if err != nil {
 				a.index = lastIndex
@@ -276,10 +278,10 @@ func (a *Analyzer) F() (*Node, error) {
 
 			}
 			if a.token.Class == lexer.Separator && a.token.Value == ")" {
-				rightBracket := &Node{class: RightBracket, token: a.token, isTerminal: true}
-				node.leftChild = leftBracket
-				leftBracket.rightBro = e
-				e.rightBro = rightBracket
+				rightBracket := &Node{Class: RightBracket, Token: a.token, IsTerminal: true}
+				node.LeftChild = leftBracket
+				leftBracket.RightBro = e
+				e.RightBro = rightBracket
 				return node, nil
 			} else {
 				a.index = lastIndex
@@ -299,7 +301,7 @@ func (a *Analyzer) F() (*Node, error) {
 func (a *Analyzer) AddOp() (*Node, error) {
 	lastIndex := a.index
 	node := &Node{
-		class: ADDOP,
+		Class: ADDOP,
 	}
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
@@ -315,10 +317,10 @@ func (a *Analyzer) AddOp() (*Node, error) {
 	}
 	switch a.token.Value {
 	case "+", "-":
-		node.leftChild = &Node{
-			class:      Operator,
-			token:      a.token,
-			isTerminal: true,
+		node.LeftChild = &Node{
+			Class:      Operator,
+			Token:      a.token,
+			IsTerminal: true,
 		}
 		return node, nil
 	default:
@@ -329,7 +331,7 @@ func (a *Analyzer) AddOp() (*Node, error) {
 func (a *Analyzer) MulOp() (*Node, error) {
 	lastIndex := a.index
 	node := &Node{
-		class: MULOP,
+		Class: MULOP,
 	}
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
@@ -344,10 +346,10 @@ func (a *Analyzer) MulOp() (*Node, error) {
 	}
 	switch a.token.Value {
 	case "*", "/":
-		node.leftChild = &Node{
-			class:      Operator,
-			token:      a.token,
-			isTerminal: true,
+		node.LeftChild = &Node{
+			Class:      Operator,
+			Token:      a.token,
+			IsTerminal: true,
 		}
 		return node, nil
 	default:
@@ -365,12 +367,12 @@ func (a *Analyzer) MulOp() (*Node, error) {
 
 // BOOL    →    JOIN  ||  BOOL    |    JOIN
 func (a *Analyzer) BOOL() (*Node, error) {
-	node := &Node{class: BOOL}
+	node := &Node{Class: BOOL}
 	join, err := a.JOIN()
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild = join
+	node.LeftChild = join
 	tempIndex := a.index
 	if ok := a.GetToken(); !ok {
 		a.index = tempIndex
@@ -379,14 +381,14 @@ func (a *Analyzer) BOOL() (*Node, error) {
 	switch a.token.Class {
 	case lexer.Operator:
 		if a.token.Value == "||" {
-			or := &Node{class: Operator, token: a.token, isTerminal: true}
+			or := &Node{Class: Operator, Token: a.token, IsTerminal: true}
 			boolvar, err := a.BOOL()
 			if err != nil {
 				a.index = tempIndex
 				return node, nil
 			}
-			join.rightBro = or
-			or.rightBro = boolvar
+			join.RightBro = or
+			or.RightBro = boolvar
 			return node, nil
 		} else {
 			a.index = tempIndex
@@ -400,12 +402,12 @@ func (a *Analyzer) BOOL() (*Node, error) {
 
 // JOIN     →    NOT   &&   JOIN  |   NOT
 func (a *Analyzer) JOIN() (*Node, error) {
-	node := &Node{class: JOIN}
+	node := &Node{Class: JOIN}
 	not, err := a.NOT()
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild = not
+	node.LeftChild = not
 	tempIndex := a.index
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
@@ -413,14 +415,14 @@ func (a *Analyzer) JOIN() (*Node, error) {
 	switch a.token.Class {
 	case lexer.Operator:
 		if a.token.Value == "&&" {
-			and := &Node{class: Operator, token: a.token, isTerminal: true}
+			and := &Node{Class: Operator, Token: a.token, IsTerminal: true}
 			join, err := a.JOIN()
 			if err != nil {
 				a.index = tempIndex
 				return node, nil
 			}
-			not.rightBro = and
-			and.rightBro = join
+			not.RightBro = and
+			and.RightBro = join
 			return node, nil
 		} else {
 			a.index = tempIndex
@@ -434,7 +436,7 @@ func (a *Analyzer) JOIN() (*Node, error) {
 
 // NOT      →    REL   |  ! REL | ! id | id
 func (a *Analyzer) NOT() (*Node, error) {
-	node := &Node{class: NOT}
+	node := &Node{Class: NOT}
 	tempIndex := a.index
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
@@ -442,7 +444,7 @@ func (a *Analyzer) NOT() (*Node, error) {
 	switch a.token.Class {
 	case lexer.Operator:
 		if a.token.Value == "!" {
-			node.leftChild = &Node{class: Operator, token: a.token, isTerminal: true}
+			node.LeftChild = &Node{Class: Operator, Token: a.token, IsTerminal: true}
 			tIndex := a.index
 			rel, err := a.REL()
 			if err != nil {
@@ -454,11 +456,11 @@ func (a *Analyzer) NOT() (*Node, error) {
 					a.index = tempIndex
 					return nil, err
 				} else {
-					node.leftChild.rightBro = &Node{class: Id, token: a.token, isTerminal: true}
+					node.LeftChild.RightBro = &Node{Class: Id, Token: a.token, IsTerminal: true}
 					return node, nil
 				}
 			}
-			node.leftChild.rightBro = rel
+			node.LeftChild.RightBro = rel
 			return node, nil
 		} else {
 			a.index = tempIndex
@@ -466,7 +468,7 @@ func (a *Analyzer) NOT() (*Node, error) {
 			if err != nil {
 				return nil, err
 			}
-			node.leftChild = rel
+			node.LeftChild = rel
 			return node, nil
 		}
 	default:
@@ -480,39 +482,39 @@ func (a *Analyzer) NOT() (*Node, error) {
 			if a.token.Class != lexer.Identifier {
 				return nil, err
 			} else {
-				node.leftChild = &Node{class: Id, token: a.token, isTerminal: true}
+				node.LeftChild = &Node{Class: Id, Token: a.token, IsTerminal: true}
 				return node, nil
 			}
 		}
-		node.leftChild = rel
+		node.LeftChild = rel
 		return node, nil
 	}
 }
 
 // REL       →    EXPR   ROP  EXPR
 func (a *Analyzer) REL() (*Node, error) {
-	node := &Node{class: REL}
+	node := &Node{Class: REL}
 	expr, err := a.E()
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild = expr
+	node.LeftChild = expr
 	rop, err := a.ROP()
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild.rightBro = rop
+	node.LeftChild.RightBro = rop
 	expr, err = a.E()
 	if err != nil {
 		return nil, err
 	}
-	rop.rightBro = expr
+	rop.RightBro = expr
 	return node, nil
 }
 
 // ROP      →     >  |  >=  |  <  |  <=  |  ==  |   !=
 func (a *Analyzer) ROP() (*Node, error) {
-	node := &Node{class: ROP}
+	node := &Node{Class: ROP}
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
 	}
@@ -522,7 +524,7 @@ func (a *Analyzer) ROP() (*Node, error) {
 		if !isBoolOperator {
 			return nil, valueError(a.token.Value, a.index)
 		}
-		node.leftChild = &Node{class: Operator, token: a.token, isTerminal: true}
+		node.LeftChild = &Node{Class: Operator, Token: a.token, IsTerminal: true}
 		return node, nil
 	default:
 		return nil, classError(a.token.Class, a.index)
@@ -534,7 +536,7 @@ func (a *Analyzer) ROP() (*Node, error) {
 //DECL         →    int  NAMES  ;  |  bool  NAMES  ;
 //NAMES     →    NAME ,  NAMES  |  NAME
 //NAME       →    id
-//STMTS    →    STMT  STMTS  |   STMT
+//STMTS    →    STMT  STMTS  |   empty
 //STMT      →    id  =  EXPR ;    |   id := BOOL ;
 //STMT      →    if  id   then  STMT
 //STMT      →    if   id   then  STMT  else STMT
@@ -545,14 +547,14 @@ func (a *Analyzer) ROP() (*Node, error) {
 
 // PROG   →    {  DECLS  STMTS  }
 func (a *Analyzer) PROG() (*Node, error) {
-	node := &Node{class: PROG}
+	node := &Node{Class: PROG}
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
 	}
 	switch a.token.Class {
 	case lexer.Separator:
 		if a.token.Value == "{" {
-			leftBracket := &Node{class: LeftBracket, token: a.token, isTerminal: true}
+			leftBracket := &Node{Class: LeftBracket, Token: a.token, IsTerminal: true}
 			decls, err := a.DECLS()
 			if err != nil {
 				return nil, err
@@ -567,11 +569,11 @@ func (a *Analyzer) PROG() (*Node, error) {
 			if a.token.Value != "}" {
 				return nil, valueError(a.token.Value, a.index)
 			}
-			rightBracket := &Node{class: RightBracket, token: a.token, isTerminal: true}
-			leftBracket.rightBro = decls
-			decls.rightBro = stmts
-			stmts.rightBro = rightBracket
-			node.leftChild = leftBracket
+			rightBracket := &Node{Class: RightBracket, Token: a.token, IsTerminal: true}
+			leftBracket.RightBro = decls
+			decls.RightBro = stmts
+			stmts.RightBro = rightBracket
+			node.LeftChild = leftBracket
 			return node, nil
 		} else {
 			return nil, valueError(a.token.Value, a.index)
@@ -583,20 +585,20 @@ func (a *Analyzer) PROG() (*Node, error) {
 
 // STMTS    →    STMT  STMTS  |   empty
 func (a *Analyzer) STMTS() (*Node, error) {
-	node := &Node{class: STMTS}
+	node := &Node{Class: STMTS}
 	tempIndex := a.index
 	stmt, err := a.STMT()
 	if err != nil {
 		a.index = tempIndex
-		node.leftChild = &Node{class: Empty}
+		node.LeftChild = &Node{Class: Empty}
 		return node, nil
 	}
-	node.leftChild = stmt
+	node.LeftChild = stmt
 	stmts, err := a.STMTS()
 	if err != nil {
 		return node, nil
 	}
-	stmt.rightBro = stmts
+	stmt.RightBro = stmts
 	return node, nil
 }
 
@@ -608,14 +610,14 @@ func (a *Analyzer) STMTS() (*Node, error) {
 // STMT      →    read  id  ;
 // STMT      →    write  id  ;
 func (a *Analyzer) STMT() (*Node, error) {
-	node := &Node{class: STMT}
+	node := &Node{Class: STMT}
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
 	}
 	switch a.token.Class {
 	case lexer.Identifier:
-		id := &Node{class: Id, token: a.token, isTerminal: true}
-		node.leftChild = id
+		id := &Node{Class: Id, Token: a.token, IsTerminal: true}
+		node.LeftChild = id
 		if ok := a.GetToken(); !ok {
 			return nil, EndErr
 		}
@@ -624,38 +626,38 @@ func (a *Analyzer) STMT() (*Node, error) {
 		}
 		switch a.token.Value {
 		case "=":
-			equal := &Node{class: Operator, token: a.token, isTerminal: true}
-			id.rightBro = equal
+			equal := &Node{Class: Operator, Token: a.token, IsTerminal: true}
+			id.RightBro = equal
 			expr, err := a.E()
 			if err != nil {
 				return nil, err
 			}
-			equal.rightBro = expr
+			equal.RightBro = expr
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
 			if a.token.Class != lexer.Separator || a.token.Value != ";" {
 				return nil, classError(a.token.Class, a.index)
 			}
-			semicolon := &Node{class: Separator, token: a.token, isTerminal: true}
-			expr.rightBro = semicolon
+			semicolon := &Node{Class: Separator, Token: a.token, IsTerminal: true}
+			expr.RightBro = semicolon
 			return node, nil
 		case ":=":
-			assign := &Node{class: Operator, token: a.token, isTerminal: true}
-			id.rightBro = assign
+			assign := &Node{Class: Operator, Token: a.token, IsTerminal: true}
+			id.RightBro = assign
 			boolvar, err := a.BOOL()
 			if err != nil {
 				return nil, err
 			}
-			assign.rightBro = boolvar
+			assign.RightBro = boolvar
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
 			if a.token.Class != lexer.Separator || a.token.Value != ";" {
 				return nil, classError(a.token.Class, a.index)
 			}
-			semicolon := &Node{class: Separator, token: a.token, isTerminal: true}
-			boolvar.rightBro = semicolon
+			semicolon := &Node{Class: Separator, Token: a.token, IsTerminal: true}
+			boolvar.RightBro = semicolon
 			return node, nil
 		default:
 			return nil, valueError(a.token.Value, a.index)
@@ -663,29 +665,29 @@ func (a *Analyzer) STMT() (*Node, error) {
 	case lexer.Keyword:
 		switch a.token.Value {
 		case "if":
-			ifvar := &Node{class: If, token: a.token, isTerminal: true}
-			node.leftChild = ifvar
+			ifvar := &Node{Class: If, Token: a.token, IsTerminal: true}
+			node.LeftChild = ifvar
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
 			if a.token.Class != lexer.Identifier {
 				return nil, classError(a.token.Class, a.index)
 			}
-			id := &Node{class: Id, token: a.token, isTerminal: true}
-			ifvar.rightBro = id
+			id := &Node{Class: Id, Token: a.token, IsTerminal: true}
+			ifvar.RightBro = id
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
 			if a.token.Class != lexer.Keyword || a.token.Value != "then" {
 				return nil, classError(a.token.Class, a.index)
 			}
-			then := &Node{class: Then, token: a.token, isTerminal: true}
-			id.rightBro = then
+			then := &Node{Class: Then, Token: a.token, IsTerminal: true}
+			id.RightBro = then
 			stmt, err := a.STMT()
 			if err != nil {
 				return nil, err
 			}
-			then.rightBro = stmt
+			then.RightBro = stmt
 			tempIndex := a.index
 			if ok := a.GetToken(); !ok {
 				a.index = tempIndex
@@ -695,73 +697,73 @@ func (a *Analyzer) STMT() (*Node, error) {
 				a.index = tempIndex
 				return node, nil
 			}
-			elsevar := &Node{class: Else, token: a.token, isTerminal: true}
-			stmt.rightBro = elsevar
+			elsevar := &Node{Class: Else, Token: a.token, IsTerminal: true}
+			stmt.RightBro = elsevar
 			stmt, err = a.STMT()
 			if err != nil {
 				return nil, err
 			}
-			elsevar.rightBro = stmt
+			elsevar.RightBro = stmt
 			return node, nil
 		case "while":
-			whilevar := &Node{class: While, token: a.token, isTerminal: true}
-			node.leftChild = whilevar
+			whilevar := &Node{Class: While, Token: a.token, IsTerminal: true}
+			node.LeftChild = whilevar
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
 			if a.token.Class != lexer.Identifier {
 				return nil, classError(a.token.Class, a.index)
 			}
-			id := &Node{class: Id, token: a.token, isTerminal: true}
-			whilevar.rightBro = id
+			id := &Node{Class: Id, Token: a.token, IsTerminal: true}
+			whilevar.RightBro = id
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
 			if a.token.Class != lexer.Keyword || a.token.Value != "do" {
 				return nil, classError(a.token.Class, a.index)
 			}
-			do := &Node{class: Do, token: a.token, isTerminal: true}
-			id.rightBro = do
+			do := &Node{Class: Do, Token: a.token, IsTerminal: true}
+			id.RightBro = do
 			stmt, err := a.STMT()
 			if err != nil {
 				return nil, err
 			}
-			do.rightBro = stmt
+			do.RightBro = stmt
 			return node, nil
 		case "read":
-			read := &Node{class: Read, token: a.token, isTerminal: true}
-			node.leftChild = read
+			read := &Node{Class: Read, Token: a.token, IsTerminal: true}
+			node.LeftChild = read
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
 			if a.token.Class != lexer.Identifier {
 				return nil, classError(a.token.Class, a.index)
 			}
-			id := &Node{class: Id, token: a.token, isTerminal: true}
-			read.rightBro = id
+			id := &Node{Class: Id, Token: a.token, IsTerminal: true}
+			read.RightBro = id
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
 			if a.token.Class != lexer.Separator || a.token.Value != ";" {
 				return nil, classError(a.token.Class, a.index)
 			}
-			id.rightBro = &Node{class: Separator, token: a.token, isTerminal: true}
+			id.RightBro = &Node{Class: Separator, Token: a.token, IsTerminal: true}
 			return node, nil
 		case "write":
-			write := &Node{class: Write, token: a.token, isTerminal: true}
-			node.leftChild = write
+			write := &Node{Class: Write, Token: a.token, IsTerminal: true}
+			node.LeftChild = write
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
-			id := &Node{class: Id, token: a.token, isTerminal: true}
-			write.rightBro = id
+			id := &Node{Class: Id, Token: a.token, IsTerminal: true}
+			write.RightBro = id
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
 			if a.token.Class != lexer.Separator || a.token.Value != ";" {
 				return nil, classError(a.token.Class, a.index)
 			}
-			id.rightBro = &Node{class: Separator, token: a.token, isTerminal: true}
+			id.RightBro = &Node{Class: Separator, Token: a.token, IsTerminal: true}
 			return node, nil
 		default:
 			return nil, valueError(a.token.Value, a.index)
@@ -769,21 +771,21 @@ func (a *Analyzer) STMT() (*Node, error) {
 	case lexer.Separator:
 		switch a.token.Value {
 		case "{":
-			leftBracket := &Node{class: LeftBracket, token: a.token, isTerminal: true}
-			node.leftChild = leftBracket
+			leftBracket := &Node{Class: LeftBracket, Token: a.token, IsTerminal: true}
+			node.LeftChild = leftBracket
 			stmts, err := a.STMTS()
 			if err != nil {
 				return nil, err
 			}
-			leftBracket.rightBro = stmts
+			leftBracket.RightBro = stmts
 			if ok := a.GetToken(); !ok {
 				return nil, EndErr
 			}
 			if a.token.Class != lexer.Separator || a.token.Value != "}" {
 				return nil, classError(a.token.Class, a.index)
 			}
-			rightBracket := &Node{class: RightBracket, token: a.token, isTerminal: true}
-			stmts.rightBro = rightBracket
+			rightBracket := &Node{Class: RightBracket, Token: a.token, IsTerminal: true}
+			stmts.RightBro = rightBracket
 			return node, nil
 		default:
 			return nil, classError(a.token.Class, a.index)
@@ -795,26 +797,26 @@ func (a *Analyzer) STMT() (*Node, error) {
 
 // DECLS       →    DECL  DECLS    |   empty
 func (a *Analyzer) DECLS() (*Node, error) {
-	node := &Node{class: DECLS}
+	node := &Node{Class: DECLS}
 	tempIndex := a.index
 	decl, err := a.DECL()
 	if err != nil {
 		a.index = tempIndex
-		node.leftChild = &Node{class: Empty}
+		node.LeftChild = &Node{Class: Empty}
 		return node, nil
 	}
-	node.leftChild = decl
+	node.LeftChild = decl
 	decls, err := a.DECLS()
 	if err != nil {
 		return nil, err
 	}
-	decl.rightBro = decls
+	decl.RightBro = decls
 	return node, nil
 }
 
 // DECL         →    int  NAMES  ;  |  bool  NAMES  ;
 func (a *Analyzer) DECL() (*Node, error) {
-	node := &Node{class: DECL}
+	node := &Node{Class: DECL}
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
 	}
@@ -823,9 +825,9 @@ func (a *Analyzer) DECL() (*Node, error) {
 	}
 	switch a.token.Value {
 	case "int":
-		node.leftChild = &Node{class: Int, token: a.token, isTerminal: true}
+		node.LeftChild = &Node{Class: Int, Token: a.token, IsTerminal: true}
 	case "bool":
-		node.leftChild = &Node{class: Bool, token: a.token, isTerminal: true}
+		node.LeftChild = &Node{Class: Bool, Token: a.token, IsTerminal: true}
 	default:
 		return nil, valueError(a.token.Value, a.index)
 	}
@@ -833,25 +835,25 @@ func (a *Analyzer) DECL() (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild.rightBro = names
+	node.LeftChild.RightBro = names
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
 	}
 	if a.token.Class != lexer.Separator || a.token.Value != ";" {
 		return nil, classError(a.token.Class, a.index)
 	}
-	names.rightBro = &Node{class: Separator, token: a.token, isTerminal: true}
+	names.RightBro = &Node{Class: Separator, Token: a.token, IsTerminal: true}
 	return node, nil
 }
 
 // NAMES     →    NAME ,  NAMES  |  NAME
 func (a *Analyzer) NAMES() (*Node, error) {
-	node := &Node{class: NAMES}
+	node := &Node{Class: NAMES}
 	name, err := a.NAME()
 	if err != nil {
 		return nil, err
 	}
-	node.leftChild = name
+	node.LeftChild = name
 	tempIndex := a.index
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
@@ -860,25 +862,25 @@ func (a *Analyzer) NAMES() (*Node, error) {
 		a.index = tempIndex
 		return node, nil
 	}
-	colon := &Node{class: Separator, token: a.token, isTerminal: true}
+	colon := &Node{Class: Separator, Token: a.token, IsTerminal: true}
 	names, err := a.NAMES()
 	if err != nil {
 		return node, nil
 	}
-	name.rightBro = colon
-	colon.rightBro = names
+	name.RightBro = colon
+	colon.RightBro = names
 	return node, nil
 }
 
 // NAME      →    id
 func (a *Analyzer) NAME() (*Node, error) {
-	node := &Node{class: NAME}
+	node := &Node{Class: NAME}
 	if ok := a.GetToken(); !ok {
 		return nil, EndErr
 	}
 	switch a.token.Class {
 	case lexer.Identifier:
-		node.leftChild = &Node{class: Id, isTerminal: true, token: a.token}
+		node.LeftChild = &Node{Class: Id, IsTerminal: true, Token: a.token}
 		return node, nil
 	default:
 		return nil, classError(a.token.Class, a.index)
@@ -912,15 +914,15 @@ func (a *Analyzer) deal(node *Node, row, column int) int {
 	if len(a.treeSource[row]) < column {
 		a.treeSource[row] += strings.Repeat(" ", column-len(a.treeSource[row])+1)
 	}
-	if node.isTerminal {
-		a.treeSource[row] += node.token.Value
+	if node.IsTerminal {
+		a.treeSource[row] += node.Token.Value
 	} else {
-		a.treeSource[row] += ConstMap[node.class]
+		a.treeSource[row] += ConstMap[node.Class]
 	}
 	//打印当前节点下的竖线
 	row++
-	column += len(ConstMap[node.class]) / 2
-	if node.leftChild != nil {
+	column += len(ConstMap[node.Class]) / 2
+	if node.LeftChild != nil {
 		if len(a.treeSource) <= row {
 			a.treeSource = append(a.treeSource, "")
 		}
@@ -933,16 +935,16 @@ func (a *Analyzer) deal(node *Node, row, column int) int {
 		}
 		//打印当前节点的左儿子节点
 		row++
-		if node.leftChild.isTerminal {
+		if node.LeftChild.IsTerminal {
 			column -= 1
 		} else {
-			column -= len(ConstMap[node.class]) / 2
+			column -= len(ConstMap[node.Class]) / 2
 		}
-		column = a.deal(node.leftChild, row, column)
+		column = a.deal(node.LeftChild, row, column)
 	}
 	//打印当前节点的右兄弟节点
 	row = tempRow
-	if node.rightBro == nil {
+	if node.RightBro == nil {
 		return max(column, len(a.treeSource[row]))
 	}
 	if len(a.treeSource[row]) < column {
@@ -951,7 +953,7 @@ func (a *Analyzer) deal(node *Node, row, column int) int {
 		a.treeSource[row] += strings.Repeat("-", 5)
 	}
 	column = len(a.treeSource[row])
-	column = a.deal(node.rightBro, row, column)
+	column = a.deal(node.RightBro, row, column)
 	return column
 }
 func max(a, b int) int {

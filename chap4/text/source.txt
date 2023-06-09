@@ -1,0 +1,22 @@
+{
+    int a;
+    int b;
+    bool d;
+    a = 10;
+    b = 1;
+    d:=a>b || a-b < 3;
+    if d then
+    {
+        write a;
+    }
+    else
+    {
+        write b;
+    }
+    while d do
+    {
+        a=a-1;
+        d:=a>b;
+    }
+    write a;
+}
